@@ -10,7 +10,7 @@
 
         3. The current application enables a Public Center to administrate the parking card.
 
-        4. The 1st block of Sector 14 is used to save the card id. THe 2nd block of Sector 14 is used to save the car patent.
+        4. The 1st block of Sector 14 is used to save the card id. THe 2nd block of Sector 14 is used to save the car plate.
            The 3rd block of Sector 14 is used to save the entrance time. 
         
         5. The 3 blocks of Sector 15 are used to save the amounts of the 3 biggest purchases, i.e. blocks 0x3C, 0x3D, 0x3E
@@ -48,12 +48,12 @@ namespace imseWCard2
         private int amount1Block = 0x3D;
         private int amount2Block = 0x3E;
 
-        //Block 0 of sector 14, i.e block 0x38, is used to save card ID. Block 1, i.e block 0x39, is used to save car patent.
+        //Block 0 of sector 14, i.e block 0x38, is used to save card ID. Block 1, i.e block 0x39, is used to save car plate.
         //Block 2, i.e. block 0x3A is used to save the time of entrance
 
         private int informationSector = 14;
         private int cardIdBlock = 0x38;
-        private int carPatentBlock = 0x39;
+        private int carPlateBlock = 0x39;
         private int entranceTimeBlock = 0x3A;
 
         //Parking fees
@@ -85,9 +85,8 @@ namespace imseWCard2
             unDisplayInformation();
         }
 
-
         private void timer1_Tick(object sender, EventArgs e)
-        {
+        {   
             if (!CADw.connect())
             {
                 announceDisconection();
@@ -120,24 +119,44 @@ namespace imseWCard2
                     double debt = calculatAndDisplayParkingDebt(Int32.Parse(quantityFreeHourslabel.Text));
 
                     if (debt == 0)
-                        announceAndOpenGate();
+                        announceAndOpenGate("NoDebt");
                     else
                         anouncePayWithOctopus(debt);
                 }
+
+                if (receivedAcceptanceFromOctopus())
+                    announceAndOpenGate("PaidWithOctopus");
             }
+        }
+
+        private bool receivedAcceptanceFromOctopus()
+        {
+            //Here octopus should tell us when a payment has been done
+            return false;
         }
 
         private void anouncePayWithOctopus(double debt)
         {
             textBoxMsg.Text = "Please pay "+debt+" with your octopus card";
 
+            sendMessageToOctopus(debt);
+
             actualParkingDebtStaticLabel.BackColor = Color.Yellow;
             actualParkingDebtLabel.BackColor = Color.Yellow;
         }
 
-        private void announceAndOpenGate()
+        private void sendMessageToOctopus(double debt)
         {
-            textBoxMsg.Text = "No debt. Opening gate...";
+            //Communication with octopus system
+        }
+
+        private void announceAndOpenGate(string s)
+        {
+            if (s.Equals("NoDebt"))
+                textBoxMsg.Text = "No debt. Opening gate...";
+            else if(s.Equals("PaidWithOctopus"))
+                textBoxMsg.Text = "Payment recieved. Opening gate...";
+
             textBoxMsg.BackColor = Color.Yellow;
             //announceAndOpenGate(); No physical implementation
         }
@@ -146,7 +165,7 @@ namespace imseWCard2
         {
             cardInformationStaticLabel.Visible = true;
             cardIdStaticLabel.Visible = true;
-            carPatentStaticLabel.Visible = true;
+            carPlateStaticLabel.Visible = true;
             entranceTimeStaticLabel.Visible = true;
             freeHoursStaticLabel.Visible = true;
             parkingCreditStaticLabel.Visible = true;
@@ -234,7 +253,7 @@ namespace imseWCard2
         private void displayCardInformation()
         {
             string cardId="";
-            string carPatent = "";
+            string carPlate = "";
 
             if (CADw.read(cardIdBlock, ref cardId) == false)
             {
@@ -243,14 +262,14 @@ namespace imseWCard2
             }
 
             
-            if (CADw.read(carPatentBlock, ref carPatent) == false)
+            if (CADw.read(carPlateBlock, ref carPlate) == false)
             {
                 textBoxMsg.Text = "Read value error!";
                 return;
             }
             // Display the value 
             cardIdLabel.Text = cardId + "";
-            carPatentLabel.Text = carPatent;
+            carPlateLabel.Text = carPlate;
         }
 
         private bool authenticateSector(int sector)
@@ -315,7 +334,7 @@ namespace imseWCard2
         {
             cardInformationStaticLabel.Visible = false;
             cardIdStaticLabel.Visible = false;
-            carPatentStaticLabel.Visible = false;
+            carPlateStaticLabel.Visible = false;
             entranceTimeStaticLabel.Visible = false;
             freeHoursStaticLabel.Visible = false;
             parkingCreditStaticLabel.Visible = false;
@@ -326,16 +345,18 @@ namespace imseWCard2
             labelAmt.Text = "";
             quantityFreeHourslabel.Text = "";
             cardIdLabel.Text = "";
-            carPatentLabel.Text = "";
+            carPlateLabel.Text = "";
             entranceTimeLabel.Text = "";
             actualTimeLabel.Text = "";
             actualParkingDebtLabel.Text = "";
+
+            textBoxMsg.BackColor = Color.White;
         }
 
         private void resetMemoryValues()
         {
             CADw.write(cardIdBlock, "");
-            CADw.write(carPatentBlock, "");
+            CADw.write(carPlateBlock, "");
             CADw.updateValueBlock(amount0Block, 0);
             CADw.updateValueBlock(amount1Block, 0);
             CADw.updateValueBlock(amount2Block, 0);
